@@ -98,7 +98,8 @@ public class GameObject extends AppCompatImageView {
                     break;
 
                 case MotionEvent.ACTION_UP: // отпускание
-                case MotionEvent.ACTION_CANCEL:
+                //case MotionEvent.ACTION_CANCEL:
+                    //Log.d("GO", "Object dropped!" + this);
                     mainActivity.onGameObjectDrop(this);
 
                     break;
