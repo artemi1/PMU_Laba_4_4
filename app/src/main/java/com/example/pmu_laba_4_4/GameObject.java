@@ -1,43 +1,41 @@
 package com.example.pmu_laba_4_4;
 
 import android.content.Context;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.ConstraintSet;
-import androidx.core.view.MotionEventCompat;
 
 public class GameObject extends AppCompatImageView {
-    private int X, Y;
-    private int maxX, maxY;
+    private int arenaMinX, arenaMaxX, arenaMinY, arenaMaxY;
     private int prevEventX, prevEventY;
     private int objCode;
     private MainActivity mainActivity;
 
-    //ConstraintLayout parentLayout;
-    //ConstraintSet constraintSet;
 
     public GameObject(Context context){
         super(context);
         mainActivity = (MainActivity) context;
     }
 
-    public int getCurrX(){return X;}
-    public int getCurrY(){return Y;}
     public int getObjCode(){return objCode;}
 
-
-    public void initCoords (int X, int Y, int maxX, int maxY){
-        this.X = X;
-        this.Y = Y;
-        this.maxX = maxX;
-        this.maxY = maxY;
+    public float getVertBias(){
+        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) this.getLayoutParams();
+        return layoutParams.verticalBias;
     }
 
-    public void initPicture (int objCode){
+    public float getHorBias(){
+        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) this.getLayoutParams();
+        return layoutParams.horizontalBias;
+    }
+
+    public void initGameObject (int arenaMinX, int arenaMaxX, int arenaMinY, int arenaMaxY, int objCode){
+        this.arenaMinX = arenaMinX;
+        this.arenaMaxX = arenaMaxX;
+        this.arenaMinY = arenaMinY;
+        this.arenaMaxY = arenaMaxY;
         this.objCode = objCode;
 
         switch (objCode){
@@ -60,6 +58,7 @@ public class GameObject extends AppCompatImageView {
     {
         // сарай не двигается!
         if (objCode != GlobalConstants.OBJ_CODE_BARN) {
+
             int eventX = (int) event.getRawX();
             int eventY = (int) event.getRawY();
 
@@ -70,36 +69,28 @@ public class GameObject extends AppCompatImageView {
                     break;
 
                 case MotionEvent.ACTION_MOVE: // движение
-                    int deltaX = eventX - prevEventX;
-                    int deltaY = eventY - prevEventY;
+                    if (eventX > arenaMinX && eventY > arenaMinY &&
+                            eventX < arenaMaxX && eventY < arenaMaxY) {
 
-                    prevEventX = eventX;
-                    prevEventY = eventY;
+                        int deltaX = eventX - prevEventX;
+                        int deltaY = eventY - prevEventY;
 
-                    X += deltaX;
-                    Y += deltaY;
+                        prevEventX = eventX;
+                        prevEventY = eventY;
 
-                    ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) this.getLayoutParams();
-                    layoutParams.leftMargin = X;
-                    layoutParams.topMargin = Y;
-                    this.setLayoutParams(layoutParams);
+                        float deltaHorizontalBias = (float) deltaX / (arenaMaxX - arenaMinX);
+                        float deltaVerticalBias = (float) deltaY / (arenaMaxY - arenaMinY);
 
-
-            /*
-            ConstraintLayout parentLayout = (ConstraintLayout)getParent();
-            int mID = this.getId();
-            constraintSet.clone(parentLayout);
-            constraintSet.setMargin(mID, ConstraintSet.START, X);
-            constraintSet.setMargin(mID, ConstraintSet.TOP, Y);
-            constraintSet.applyTo(parentLayout);
-
-            */
+                        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) this.getLayoutParams();
+                        layoutParams.horizontalBias += deltaHorizontalBias;
+                        layoutParams.verticalBias += deltaVerticalBias;
+                        this.setLayoutParams(layoutParams);
+                    }
 
                     break;
 
                 case MotionEvent.ACTION_UP: // отпускание
                 //case MotionEvent.ACTION_CANCEL:
-                    //Log.d("GO", "Object dropped!" + this);
                     mainActivity.onGameObjectDrop(this);
 
                     break;
