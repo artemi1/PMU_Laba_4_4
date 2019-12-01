@@ -3,7 +3,6 @@ package com.example.pmu_laba_4_4;
 import android.app.Activity;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.animation.Animation;
@@ -22,7 +21,7 @@ import java.util.Random;
 public class MainActivity extends Activity{
 
 
-    private ImageButton btnRestart;
+    private ImageButton btnRestart, btnBanner;
     private TextView scoreField;
     private int gdlnTopID, gdlnBottomID;
     private int arenaMinX, arenaMaxX, arenaMinY, arenaMaxY;
@@ -43,13 +42,19 @@ public class MainActivity extends Activity{
         scoreField = (TextView) findViewById(R.id.txtViewScore);
         scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
 
+        btnBanner = (ImageButton) findViewById(R.id.btnBanner);
 
         // обработчик кнопки Restart
         btnRestart = (ImageButton) findViewById(R.id.btnRestart);
         btnRestart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final Animation animation = AnimationUtils.loadAnimation(MainActivity.this, R.anim.bounce);
+                // на тот случайЮ если рестарт нажали пр видимом финальном баннере
+                btnBanner.setVisibility(View.GONE);
+                mBarn.setVisibility(View.VISIBLE);
+
+                // запускаем анимацию
+                Animation animation = AnimationUtils.loadAnimation(MainActivity.this, R.anim.zoom);
                 BounceInterpolator interpolator = new BounceInterpolator(0.1, 20);
                 animation.setInterpolator(interpolator);
                 btnRestart.startAnimation(animation);
@@ -75,8 +80,7 @@ public class MainActivity extends Activity{
 
 
 
-        // когда основной layout будет инициализирован узнаЕм его размер
-        // и создаем игровые объекты
+        // когда основной layout будет инициализирован - узнАем его размер и создадим игровые объекты
         final ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.playArena);
         mainLayout.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -88,17 +92,22 @@ public class MainActivity extends Activity{
     }
 
 
+    // -----------------------------------------------------------------------------
+    // вычисляем и сохраняем размер игрового поля, создаем игровые объекты
+    // -----------------------------------------------------------------------------
     private void populateArena(int layoutXSize, int layoutYSize){
         // сохраняем IDшки верхней и нижней линии привязки
+        // для дальнейшей привязки к ним игровых объектов
         Guideline gdlnTop = (Guideline) findViewById(R.id.gdlnTop);
         this.gdlnTopID = gdlnTop.getId();
         Guideline gdlnBottom = (Guideline) findViewById(R.id.gdlnBottom);
         this.gdlnBottomID = gdlnBottom.getId();
 
+        // сохраняем размер игрового поля по Х
         this.arenaMinX = 0;
         this.arenaMaxX = layoutXSize;
 
-        // вычисляем размер игрового поля по Y
+        // вычисляем и сохраняем размер игрового поля по Y
         ConstraintLayout.LayoutParams gdlnTopParams = (ConstraintLayout.LayoutParams) gdlnTop.getLayoutParams();
         ConstraintLayout.LayoutParams gdlnBottomParams = (ConstraintLayout.LayoutParams) gdlnBottom.getLayoutParams();
         this.arenaMinY = Math.round(layoutYSize * gdlnTopParams.guidePercent);
@@ -137,7 +146,7 @@ public class MainActivity extends Activity{
             Y=0.5f;
             layoutParams = new ConstraintLayout.LayoutParams(GlobalConstants.BARN_SIZE,
                     GlobalConstants.BARN_SIZE);
-        // генерируем смещения для волков и овпец, чтобы он не налезали на уже созданные объекты
+        // генерируем смещения для волков и овец, чтобы он не налезали на уже созданные объекты
         }else {
             boolean exitFlag = false;
             while (!exitFlag) {
@@ -201,6 +210,10 @@ public class MainActivity extends Activity{
                 score++;
                 removeGameObject(droppedObject);
                 scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
+
+                if (gameObjects.isEmpty()){
+                    onLevelCompletion();
+                }
                 break;
             }
 
@@ -208,14 +221,23 @@ public class MainActivity extends Activity{
                 score--;
                 removeGameObject(droppedObject);
                 scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
+
+                if (gameObjects.isEmpty()){
+                    onLevelCompletion();
+                }
                 break;
             }
+
 
         case GlobalConstants.OBJ_CODE_WOLF:
             if (isDroppedOnBarn(droppedObject)) {
                 score--;
                 removeGameObject(droppedObject);
                 scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
+
+                if (gameObjects.isEmpty()){
+                    onLevelCompletion();
+                }
                 break;
             }
 
@@ -223,6 +245,10 @@ public class MainActivity extends Activity{
                 score++;
                 removeGameObject(droppedObject);
                 scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
+
+                if (gameObjects.isEmpty()){
+                    onLevelCompletion();
+                }
                 break;
             }
 
@@ -254,6 +280,34 @@ public class MainActivity extends Activity{
         ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.playArena);
         layout.removeView(mObj);
         gameObjects.remove(mObj);
+    }
+
+    private void onLevelCompletion(){
+        mBarn.setVisibility(View.GONE);
+
+        Animation animZoom = AnimationUtils.loadAnimation(this, R.anim.zoom);
+        btnBanner.setVisibility(View.VISIBLE);
+        btnBanner.startAnimation(animZoom);
+
+        btnBanner.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mBarn.setVisibility(View.VISIBLE);
+                btnBanner.setVisibility(View.GONE);
+
+                // удаляем оставшихся волков и овец (на всякий случай)
+                while(!gameObjects.isEmpty()){
+                    removeGameObject(gameObjects.get(0));
+                }
+
+                // создаем новых волков и овец
+                for (int i = 0; i < GlobalConstants.NUMBER_OF_GAME_OBJECTS; i++) {
+                    int objCode = random.nextInt(2)+1;  // 1 (=wolf) or 2 (=sheeр)
+                    GameObject mGameObject = placeNewGameObject(objCode);
+                    gameObjects.add(mGameObject);
+                }
+            }
+        });
     }
 
 }
