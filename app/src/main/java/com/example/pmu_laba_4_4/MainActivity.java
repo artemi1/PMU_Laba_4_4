@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.animation.BounceInterpolator;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -49,15 +50,14 @@ public class MainActivity extends Activity{
         btnRestart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // на тот случайЮ если рестарт нажали пр видимом финальном баннере
+                // на тот случай, если рестарт нажали пр видимом финальном баннере
                 btnBanner.setVisibility(View.GONE);
                 mBarn.setVisibility(View.VISIBLE);
 
                 // запускаем анимацию
-                Animation animation = AnimationUtils.loadAnimation(MainActivity.this, R.anim.zoom);
-                BounceInterpolator interpolator = new BounceInterpolator(0.1, 20);
-                animation.setInterpolator(interpolator);
-                btnRestart.startAnimation(animation);
+                Animation animZoomBounced = AnimationUtils.loadAnimation(MainActivity.this, R.anim.zoom);
+                animZoomBounced.setInterpolator(new BounceInterpolator());
+                btnRestart.startAnimation(animZoomBounced);
 
                 // сарай не трогаем!
 
@@ -255,6 +255,11 @@ public class MainActivity extends Activity{
         }
     }
 
+
+
+    // -----------------------------------------------------------------------------
+    // был ли объект дропнут на сарай?
+    // -----------------------------------------------------------------------------
     private boolean isDroppedOnBarn (GameObject droppedObj){
         if (droppedObj.getHorBias() > mBarn.getHorBias() - 0.1f &&
                 droppedObj.getHorBias() < mBarn.getHorBias() + 0.1f &&
@@ -266,6 +271,9 @@ public class MainActivity extends Activity{
         }
     }
 
+    // -----------------------------------------------------------------------------
+    // был ли объект дропнут на правый/левый край поля (=свайпнут)?
+    // -----------------------------------------------------------------------------
     private boolean isSwiped (GameObject droppedObj){
         if (droppedObj.getHorBias() < 0.1f ||
                 droppedObj.getHorBias() > 0.9f){
@@ -276,12 +284,18 @@ public class MainActivity extends Activity{
         }
     }
 
+    // -----------------------------------------------------------------------------
+    // удаляем объект с layout'а и из списка активных объектов
+    // -----------------------------------------------------------------------------
     private void removeGameObject(GameObject mObj){
         ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.playArena);
         layout.removeView(mObj);
         gameObjects.remove(mObj);
     }
 
+    // -----------------------------------------------------------------------------
+    // отображение баннера завершения уровня
+    // -----------------------------------------------------------------------------
     private void onLevelCompletion(){
         mBarn.setVisibility(View.GONE);
 
@@ -292,10 +306,11 @@ public class MainActivity extends Activity{
         btnBanner.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mBarn.setVisibility(View.VISIBLE);
                 btnBanner.setVisibility(View.GONE);
+                mBarn.setVisibility(View.VISIBLE);
 
-                // удаляем оставшихся волков и овец (на всякий случай)
+                // удаляем оставшихся волков и овец
+                // (по идее, их быть уже не должно, но на всякий случай)
                 while(!gameObjects.isEmpty()){
                     removeGameObject(gameObjects.get(0));
                 }
