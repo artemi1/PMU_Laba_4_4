@@ -1,8 +1,6 @@
 package com.example.pmu_laba_4_4;
 
 import android.content.Context;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.Log;
 import android.view.MotionEvent;
 
