@@ -30,6 +30,7 @@ public class MainActivity extends Activity{
     private GameObject mBarn;
     private Random random;
     private int score = 0;
+    private Bundle savedInstanceState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,10 +41,15 @@ public class MainActivity extends Activity{
         long millisecondsFromEpoch = System.currentTimeMillis();
         random = new Random(millisecondsFromEpoch);
 
+        // отображаем поле со счетом
         scoreField = (TextView) findViewById(R.id.txtViewScore);
+        if(savedInstanceState != null ) {
+            this.score = savedInstanceState.getInt(GlobalConstants.KEY_SCORE);
+        }
         scoreField.setText(GlobalConstants.SCORE_MESSAGE + String.valueOf(score));
 
         btnBanner = (ImageButton) findViewById(R.id.btnBanner);
+        this.savedInstanceState = savedInstanceState;
 
         // обработчик кнопки Restart
         btnRestart = (ImageButton) findViewById(R.id.btnRestart);
@@ -69,7 +75,7 @@ public class MainActivity extends Activity{
                 // создаем новых волков и овец
                 for (int i = 0; i < GlobalConstants.NUMBER_OF_GAME_OBJECTS; i++) {
                     int objCode = random.nextInt(2)+1;  // 1 (=wolf) or 2 (=sheeр)
-                    GameObject mGameObject = placeNewGameObject(objCode);
+                    GameObject mGameObject = placeNewGameObject(objCode, -1.0f, -1.0f);
                     gameObjects.add(mGameObject);
                 }
 
@@ -89,6 +95,35 @@ public class MainActivity extends Activity{
                 mainLayout.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
         });
+    }
+
+
+
+    // -----------------------------------------------------------------------------
+    // сохраняем данные при повороте устройства
+    // -----------------------------------------------------------------------------
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putInt(GlobalConstants.KEY_SCORE, score);
+
+        ArrayList<Integer> savedObjCodes = new ArrayList<>();
+        float[] savedHorBias = new float[gameObjects.size()];
+        float[] savedVertBias = new float[gameObjects.size()];
+
+
+        int i=0;
+        for (GameObject gameObject : gameObjects) {
+            savedObjCodes.add(gameObject.getObjCode());
+            savedHorBias[i] = gameObject.getHorBias();
+            savedVertBias[i] = gameObject.getVertBias();
+            i++;
+        }
+
+        outState.putIntegerArrayList(GlobalConstants.KEY_OBJCODE,savedObjCodes);
+        outState.putFloatArray(GlobalConstants.KEY_HORBIAS, savedHorBias);
+        outState.putFloatArray(GlobalConstants.KEY_VERTBIAS, savedVertBias);
     }
 
 
@@ -115,13 +150,29 @@ public class MainActivity extends Activity{
 
         // создаем игровые объекты...
         // ...сарай
-        mBarn = placeNewGameObject(GlobalConstants.OBJ_CODE_BARN);
+        mBarn = placeNewGameObject(GlobalConstants.OBJ_CODE_BARN, 0.5f, 0.5f);
 
         // ...волки и овцы
-        for (int i = 0; i < GlobalConstants.NUMBER_OF_GAME_OBJECTS; i++) {
-            int objCode = random.nextInt(2)+1;  // 1 (=wolf) or 2 (=sheep)
-            GameObject mGameObject = placeNewGameObject(objCode);
-            gameObjects.add(mGameObject);
+        // восстановление после поворота
+        if(savedInstanceState != null ) {
+            ArrayList<Integer> savedObjCodes = savedInstanceState.getIntegerArrayList(GlobalConstants.KEY_OBJCODE);
+            float[] savedHorBias = savedInstanceState.getFloatArray(GlobalConstants.KEY_HORBIAS);
+            float[] savedVertBias = savedInstanceState.getFloatArray(GlobalConstants.KEY_VERTBIAS);
+
+            for (int i = 0; i < savedObjCodes.size(); i++) {
+                GameObject mGameObject = placeNewGameObject(savedObjCodes.get(i),
+                        savedHorBias[i], savedVertBias[i]);
+                gameObjects.add(mGameObject);
+            }
+
+        // заполнение с нуля
+        }else {
+
+            for (int i = 0; i < GlobalConstants.NUMBER_OF_GAME_OBJECTS; i++) {
+                int objCode = random.nextInt(2) + 1;  // 1 (=wolf) or 2 (=sheep)
+                GameObject mGameObject = placeNewGameObject(objCode, -1.0f, -1.0f);
+                gameObjects.add(mGameObject);
+            }
         }
     }
 
@@ -130,7 +181,7 @@ public class MainActivity extends Activity{
     // -----------------------------------------------------------------------------
     // создаем экземпляр класса GameObject и размещаем его на layout'е
     // -----------------------------------------------------------------------------
-    private GameObject placeNewGameObject(int objCode) {
+    private GameObject placeNewGameObject(int objCode, float biasHor, float biasVert) {
         float X=0.0f, Y=0.0f;
         ConstraintLayout.LayoutParams layoutParams;
 
@@ -140,31 +191,40 @@ public class MainActivity extends Activity{
         int gameObjectID = View.generateViewId();
         mGameObject.setId(gameObjectID);
 
-        // сарай размкщаем в середине игровгого поля
+        // сарай
         if (objCode == GlobalConstants.OBJ_CODE_BARN){
-            X=0.5f;
-            Y=0.5f;
+            X=biasHor;
+            Y=biasVert;
             layoutParams = new ConstraintLayout.LayoutParams(GlobalConstants.BARN_SIZE,
                     GlobalConstants.BARN_SIZE);
-        // генерируем смещения для волков и овец, чтобы он не налезали на уже созданные объекты
+        // волки / овцы
         }else {
-            boolean exitFlag = false;
-            while (!exitFlag) {
-                exitFlag = true;
+            // если на вход уже поданы значения смещений - значит это восстановление
+            // после поворота устройства
+            if (biasHor != -1.0f && biasVert != -1.0f){
+                X = biasHor;
+                Y = biasVert;
 
-                X = random.nextFloat();
-                Y = random.nextFloat();
+            // генерируем смещения для волков и овец, чтобы он не налезали на уже созданные объекты
+            }else{
+                boolean exitFlag = false;
+                while (!exitFlag) {
+                    exitFlag = true;
 
-                if (X > mBarn.getHorBias() - 0.15f && X < mBarn.getHorBias() + 0.15f &&
-                        Y > mBarn.getVertBias() - 0.15f && Y < mBarn.getVertBias() + 0.15f){
-                    exitFlag = false;
-                    continue;
-                }
+                    X = random.nextFloat();
+                    Y = random.nextFloat();
 
-                for (GameObject gameObject : gameObjects){
-                    if (X > gameObject.getHorBias() - 0.15f && X < gameObject.getHorBias() + 0.15f &&
-                            Y > gameObject.getVertBias() - 0.15f && Y < gameObject.getVertBias() + 0.15f){
+                    if (X > mBarn.getHorBias() - 0.15f && X < mBarn.getHorBias() + 0.15f &&
+                        Y > mBarn.getVertBias() - 0.15f && Y < mBarn.getVertBias() + 0.15f) {
                         exitFlag = false;
+                        continue;
+                    }
+
+                    for (GameObject gameObject : gameObjects) {
+                        if (X > gameObject.getHorBias() - 0.15f && X < gameObject.getHorBias() + 0.15f &&
+                            Y > gameObject.getVertBias() - 0.15f && Y < gameObject.getVertBias() + 0.15f) {
+                            exitFlag = false;
+                        }
                     }
                 }
             }
@@ -318,7 +378,7 @@ public class MainActivity extends Activity{
                 // создаем новых волков и овец
                 for (int i = 0; i < GlobalConstants.NUMBER_OF_GAME_OBJECTS; i++) {
                     int objCode = random.nextInt(2)+1;  // 1 (=wolf) or 2 (=sheeр)
-                    GameObject mGameObject = placeNewGameObject(objCode);
+                    GameObject mGameObject = placeNewGameObject(objCode, -1.0f, -1.0f);
                     gameObjects.add(mGameObject);
                 }
             }

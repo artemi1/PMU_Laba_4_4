@@ -9,4 +9,8 @@ public class GlobalConstants {
     public static final int WOLF_SHEEP_SIZE = 200;
     public static final String SCORE_MESSAGE = "Game Score: ";
 
+    public static final String KEY_SCORE = "SCORE";
+    public static final String KEY_OBJCODE = "OBJCODE";
+    public static final String KEY_HORBIAS = "HORBIAS";
+    public static final String KEY_VERTBIAS = "VERTBIAS";
 }

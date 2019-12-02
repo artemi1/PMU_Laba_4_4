@@ -1,6 +1,8 @@
 package com.example.pmu_laba_4_4;
 
 import android.content.Context;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -19,7 +21,9 @@ public class GameObject extends AppCompatImageView {
         mainActivity = (MainActivity) context;
     }
 
-    public int getObjCode(){return objCode;}
+    public int getObjCode(){
+        return objCode;
+    }
 
     public float getVertBias(){
         ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) this.getLayoutParams();
@@ -101,6 +105,5 @@ public class GameObject extends AppCompatImageView {
         }
         return true;
     }
-
 
 }
